@@ -1,6 +1,4 @@
 
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.modules.auth.routes import (router as auth_router)
@@ -54,23 +52,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-local_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-]
-configured_origins = [
-    origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "").split(",")
-    if origin.strip()
-]
 # postgresql://neondb_owner:npg_bEtcV0xW7Mhy@ep-wild-shadow-b5r8tf4b-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[*local_origins, *configured_origins],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
