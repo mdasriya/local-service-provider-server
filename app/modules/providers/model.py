@@ -79,6 +79,11 @@ class Provider(Base):
     default=0
     )
     image = Column(String, nullable=True)
+    provider_type = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    locality = Column(String, nullable=True)
+    service_radius = Column(Integer, nullable=True)
 
     created_at = Column(
         DateTime(timezone=True),

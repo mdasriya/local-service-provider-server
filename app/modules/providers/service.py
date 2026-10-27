@@ -53,10 +53,13 @@ def create_provider_for_user_service(provider_data, user_id, db):
         service_area=provider_data.service_area,
 
         hourly_rate=provider_data.hourly_rate,
-
         government_id=provider_data.government_id,
-       
-        image=provider_data.image
+        image=provider_data.image,
+        provider_type=provider_data.provider_type,
+        category=provider_data.category,
+        city=provider_data.city,
+        locality=provider_data.locality,
+        service_radius=provider_data.service_radius
     )
 
     db.add(new_provider)
@@ -66,6 +69,10 @@ def create_provider_for_user_service(provider_data, user_id, db):
     # ======================================
 
     user.role = "provider"
+    if provider_data.full_name:
+        user.full_name = provider_data.full_name
+    if provider_data.phone:
+        user.phone = provider_data.phone
 
     db.commit()
 
@@ -78,7 +85,9 @@ def create_provider_for_user_service(provider_data, user_id, db):
             "provider_id": new_provider.id,
             "user_id": new_provider.user_id,
             "experience": new_provider.experience,
-            "service_area": new_provider.service_area
+            "service_area": new_provider.service_area,
+            "category": new_provider.category,
+            "provider_type": new_provider.provider_type
         }
     }
 
@@ -202,5 +211,4 @@ def get_providers_service(db, page=1, limit=8, search=None, verification_status=
             "suspended": all_providers.filter(User.is_active.is_(False)).count(),
         },
     }
-
 

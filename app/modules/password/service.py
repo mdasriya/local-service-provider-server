@@ -1,11 +1,19 @@
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
 
-from uuid import uuid4
-import random
-
+from app.core.email import (
+    EmailDeliveryError,
+    get_smtp_settings,
+    send_password_reset_email,
+)
 from app.modules.users.model import User
 
 from app.core.security import hash_password
+
+OTP_LIFETIME = timedelta(minutes=3)
+OTP_RESEND_COOLDOWN = timedelta(minutes=1)
 
 
 # ======================================
@@ -13,6 +21,8 @@ from app.core.security import hash_password
 # ======================================
 
 def forgot_password_service(forgot_data, db):
+    smtp_settings = get_smtp_settings()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
 
     user = db.query(User).filter(
         User.email == forgot_data.email
@@ -20,21 +30,39 @@ def forgot_password_service(forgot_data, db):
 
     if not user:
         return {
-            "success": False,
-            "message": "User not found"
+            "success": True,
+            "message": "If an account exists for that email, a reset code has been sent."
         }
 
-    otp = str(random.randint(100000, 999999))
+    if (
+        user.reset_otp_expiry
+        and user.reset_otp_expiry > now + OTP_LIFETIME - OTP_RESEND_COOLDOWN
+    ):
+        return {
+            "success": True,
+            "message": "If an account exists for that email, a reset code has been sent."
+        }
 
-    user.reset_otp = otp
-    user.reset_otp_expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10)
+    otp = f"{secrets.randbelow(1_000_000):06}"
+
+    user.reset_otp = hashlib.sha256(otp.encode("utf-8")).hexdigest()
+    user.reset_otp_expiry = now + OTP_LIFETIME
+    user.reset_otp_attempts = 0
 
     db.commit()
 
+    try:
+        send_password_reset_email(user.email, otp, smtp_settings)
+    except EmailDeliveryError:
+        user.reset_otp = None
+        user.reset_otp_expiry = None
+        user.reset_otp_attempts = 0
+        db.commit()
+        raise
+
     return {
         "success": True,
-        "message": "OTP generated successfully",
-        "otp": otp
+        "message": "If an account exists for that email, a reset code has been sent."
     }
 
 
@@ -47,24 +75,38 @@ def reset_password_service(reset_data, db):
     if not user:
         return {
             "success": False,
-            "message": "User not found"
+            "message": "Invalid or expired OTP"
         }
 
-    if user.reset_otp != reset_data.otp:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if (
+        not user.reset_otp
+        or not user.reset_otp_expiry
+        or user.reset_otp_expiry < now
+        or user.reset_otp_attempts >= 5
+    ):
         return {
             "success": False,
-            "message": "Invalid OTP"
+            "message": "Invalid or expired OTP"
         }
 
-    if user.reset_otp_expiry < datetime.now(timezone.utc).replace(tzinfo=None):
+    otp_hash = hashlib.sha256(reset_data.otp.encode("utf-8")).hexdigest()
+    if not hmac.compare_digest(user.reset_otp, otp_hash):
+        user.reset_otp_attempts += 1
+        if user.reset_otp_attempts >= 5:
+            user.reset_otp = None
+            user.reset_otp_expiry = None
+            user.reset_otp_attempts = 0
+        db.commit()
         return {
             "success": False,
-            "message": "OTP expired"
+            "message": "Invalid or expired OTP"
         }
 
     user.password = hash_password(reset_data.new_password)
     user.reset_otp = None
     user.reset_otp_expiry = None
+    user.reset_otp_attempts = 0
 
     db.commit()
 

@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.dependencies import (get_current_user,require_admin,require_provider,require_customer)
 
 from app.database.session import get_db
 from app.modules.users.model import User
 
-from app.modules.auth.schema import (RegisterSchema,LoginSchema)
+from app.modules.auth.schema import (
+    RegisterSchema,
+    LoginSchema,
+)
 
 from app.modules.auth.controller import (
     register_controller
@@ -13,6 +16,7 @@ from app.modules.auth.controller import (
  current_user_controller, 
 provider_dashboard_controller
 )
+from app.modules.auth.service import register_admin_service
 
 
 router = APIRouter(
@@ -31,6 +35,15 @@ def register(user: RegisterSchema,db: Session = Depends(get_db)):
         user,
         db
     )
+
+
+@router.post("/register-admin")
+def register_admin(user: RegisterSchema, db: Session = Depends(get_db)):
+    result = register_admin_service(user, db)
+    if result.get("success") is False:
+        raise HTTPException(status_code=409, detail=result["message"])
+    return result
+
 
 # ======================================
 # LOGIN API
@@ -108,7 +121,7 @@ def customer_dashboard(
 # TEMP MAKE ADMIN
 # ======================================
 
-@router.put("/make-admin/{user_id}")
+@router.put("/make-admin/{user_id}", dependencies=[Depends(require_admin)])
 def make_admin(
 
     user_id: int,
@@ -135,5 +148,3 @@ def make_admin(
         "success": True,
         "message": "User is now admin"
     }
-
-

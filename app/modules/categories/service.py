@@ -106,6 +106,8 @@ def update_category_service(category_id, category_data, db):
     category.name = category_data.name
     category.description = category_data.description
     category.icon = category_data.icon
+    if category_data.is_active is not None:
+        category.is_active = category_data.is_active
     db.commit()
     db.refresh(category)
 

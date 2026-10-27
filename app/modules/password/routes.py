@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
+from app.core.email import EmailConfigurationError, EmailDeliveryError
 from app.database.session import get_db
 
 from app.modules.password.schema import (
@@ -30,11 +31,15 @@ def forgot_password(
     forgot_data: ForgotPasswordSchema,
     db: Session = Depends(get_db)
 ):
-
-    return forgot_password_controller(
-        forgot_data,
-        db
-    )
+    try:
+        return forgot_password_controller(forgot_data, db)
+    except EmailConfigurationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except EmailDeliveryError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Could not deliver the password reset email. Please try again later.",
+        ) from error
 
 
 # ======================================

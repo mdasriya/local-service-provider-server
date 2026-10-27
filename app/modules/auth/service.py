@@ -9,7 +9,7 @@ from app.core.security import (
     create_refresh_token,
     REFRESH_TOKEN_EXPIRE_DAYS
 )
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from app.modules.providers.model import Provider
 from app.modules.services.model import Service
@@ -21,7 +21,7 @@ from app.modules.reviews.model import Review
 # REGISTER SERVICE
 # ======================================
 
-def register_service(user_data, db):
+def register_service(user_data, db, role="customer"):
 
     # ======================================
     # CHECK EMAIL
@@ -53,7 +53,7 @@ def register_service(user_data, db):
     new_user = User(
         email=user_data.email,
         password=hashed_password,
-        role=user_data.role
+        role=role
     )
 
     db.add(new_user)
@@ -71,6 +71,27 @@ def register_service(user_data, db):
             "role": new_user.role
         }
     }
+
+
+def register_admin_service(user_data, db):
+    # Serialize bootstrap attempts so concurrent requests cannot create multiple
+    # public bootstrap admins.
+    db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": 821734921})
+
+    existing_admin = db.query(User.id).filter(
+        func.lower(User.role) == "admin"
+    ).first()
+    if existing_admin:
+        db.rollback()
+        return {
+            "success": False,
+            "message": "Admin registration is closed because an admin already exists.",
+        }
+
+    result = register_service(user_data, db, role="admin")
+    if result.get("success") is False:
+        db.rollback()
+    return result
 
 
 # ======================================

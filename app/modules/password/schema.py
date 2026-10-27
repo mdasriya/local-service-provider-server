@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class ForgotPasswordSchema(BaseModel):
@@ -8,6 +8,8 @@ class ForgotPasswordSchema(BaseModel):
 
 class ResetPasswordSchema(BaseModel):
 
-    token: str
+    email: EmailStr
 
-    new_password: str
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^[0-9]{6}$")
+
+    new_password: str = Field(min_length=8, max_length=128)

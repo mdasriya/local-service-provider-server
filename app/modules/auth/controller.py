@@ -11,11 +11,12 @@ from app.modules.auth.service import (
 # REGISTER CONTROLLER
 # ======================================
 
-def register_controller(user_data, db):
+def register_controller(user_data, db, role="customer"):
 
     result = register_service(
         user_data,
-        db
+        db,
+        role
     )
 
     return result

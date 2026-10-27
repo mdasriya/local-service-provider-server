@@ -22,6 +22,7 @@ class User(Base):
     profile_image = Column(String, nullable=True)
     reset_otp = Column(String, nullable=True)
     reset_otp_expiry = Column(DateTime, nullable=True)
+    reset_otp_attempts = Column(Integer, nullable=False, default=0, server_default="0")
 
     is_verified = Column(Boolean, default=False)
 

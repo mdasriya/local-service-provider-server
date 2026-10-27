@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 from app.modules.auth.routes import (router as auth_router)
 from app.modules.providers.routes import (router as provider_router)
 from app.modules.categories.routes import (router as category_router)
@@ -49,6 +50,37 @@ from app.modules.tokens.routes import router as token_router
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+# Add the OTP attempt counter to existing user tables.
+user_columns = {
+    column["name"] for column in inspect(engine).get_columns("users")
+}
+if "reset_otp_attempts" not in user_columns:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE users ADD COLUMN reset_otp_attempts "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        )
+
+# Add provider application fields to databases created before the provider form.
+provider_columns = {
+    column["name"] for column in inspect(engine).get_columns("providers")
+}
+new_provider_columns = {
+    "provider_type": "VARCHAR",
+    "category": "VARCHAR",
+    "city": "VARCHAR",
+    "locality": "VARCHAR",
+    "service_radius": "INTEGER",
+}
+with engine.begin() as connection:
+    for column_name, column_type in new_provider_columns.items():
+        if column_name not in provider_columns:
+            connection.execute(
+                text(f"ALTER TABLE providers ADD COLUMN {column_name} {column_type}")
+            )
 
 app = FastAPI()
 

@@ -11,8 +11,6 @@ class RegisterSchema(BaseModel):
 
     password: str
 
-    role: str = "customer"
-
 
 # ======================================
 # LOGIN SCHEMA

@@ -22,3 +22,5 @@ class CategoryUpdateSchema(BaseModel):
     description: Optional[str] = None
 
     icon: Optional[str] = None
+
+    is_active: Optional[bool] = None

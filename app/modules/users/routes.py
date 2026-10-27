@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import require_admin_or_local_development
 
 from app.database.session import get_db
 
@@ -55,7 +56,7 @@ def get_all_users(
 # GET SINGLE USER
 # ======================================
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", dependencies=[Depends(require_admin_or_local_development)])
 def get_single_user(
     user_id: int,
     db: Session = Depends(get_db)
@@ -67,7 +68,7 @@ def get_single_user(
 # UPDATE USER
 # ======================================
 
-@router.put("/{user_id}")
+@router.put("/{user_id}", dependencies=[Depends(require_admin_or_local_development)])
 def update_user(
     user_id: int,
     user: UserUpdateSchema,
@@ -92,4 +93,3 @@ def delete_user(
 ):
 
     return delete_user_controller(user_id, db)
-

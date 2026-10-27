@@ -14,11 +14,18 @@ class ProviderCreateSchema(BaseModel):
 
     service_area: str
 
-    hourly_rate: float
+    hourly_rate: Optional[float] = None
 
     government_id: Optional[str] = None
 
     image: str | None = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    provider_type: Optional[str] = None
+    category: Optional[str] = None
+    city: Optional[str] = None
+    locality: Optional[str] = None
+    service_radius: Optional[int] = None
 
 
 class AdminProviderCreateSchema(ProviderCreateSchema):
